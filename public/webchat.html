@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="jp">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="description" content="Web Media Widgets Protoype">
+<meta name="author" content="Tomohiro Iwasa, Avaya">
+<meta name="updated" content="2022031112">
+<title>Web Chat Client</title>
+<!-- Bootstrap core CSS -->
+<link rel="stylesheet" href="bundle/bootstrap-4.1.3-dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="bundle/fontawesome-free-5.3.1-web/css/all.css">
+<link rel="stylesheet" href="bundle/neo-3.51.0/css/neo.min.css">
+<link rel="stylesheet" href="css/neo-extended.css">
+<script src="bundle/jquery-3.5.1/jquery.min.js" type="text/javascript"></script>
+<script src="bundle/bootstrap-4.1.3-dist/js/bootstrap.min.js" type="text/javascript"></script>
+<script src="/socket.io/socket.io.js" type="text/javascript" ></script>
+</head>
+<body>
+
+<div class="form-smartphone-container" style="width:100vw;max-width:600px;height:calc(100vh - 80px);max-height:800px;border:solid 1px #ddd;">
+  <div id="header-contact-control">
+	<nav class="neo-navbar">
+		<div class="neo-nav--left">
+			<a class="neo-navbar__brand" title="Neo Framework"> <img src="images/header_A.png" /></a>
+		</div>
+		<div id="headerView">
+			<div id="webrtc_control" class="neo-nav">
+				<div class="neo-badge__navbutton">
+					<button class="neo-badge__navbutton--content neo-btn  neo-icon-call" onclick="$('#webRtcCall').show();"></button>
+				</div>
+				<div class="neo-badge__navbutton">
+					<button class="neo-badge__navbutton--content neo-btn neo-icon-settings" onclick="$('#webRtcSettings').show();"></button>
+				</div>
+			</div>
+		</div>
+		<div id="callService" class="nodisp">
+			<div id="calls"></div>
+		</div>
+	</nav>
+  </div>
+  
+  <script>  
+  $("#settings").click(()=> {
+	$("#webRtcSettings").show();
+  });
+  </script>
+  
+  <!--TEMPLATES-->
+  <div id="templates" class="nodisp">
+    <div class="neo-nav callView row">
+        <div style="width:auto;padding:20px 20px 0px 0px;">
+        	<h5><span class="callState"></span>&nbsp&nbsp<span class="callTimer"></span></h5>
+      	</div>
+      	<div style="padding:5px;margin-right:10px;">
+			<button class="neo-badge__navbutton--content neo-btn neo-icon-audio-on tel-muteBtn" ></button>
+			<button class="neo-badge__navbutton--content neo-btn neo-icon-audio-off tel-unmuteBtn" ></button>
+		</div>
+		<div style="padding:5px;margin-right:20px;">
+			<button class="neo-badge__navbutton--content neo-btn neo-icon-call tel-dropCallBtn" ></button>
+		</div>
+	</div>
+  </div>
+  <!--END TEMPLATES-->
+	
+  <!--  WebRTC Settings and Login/Logout -->	  
+  <div id="webRtcCall" class="nodisp" style="position:absolute;top:100px;left:10px;width:95vw;max-width:580px;">
+    <div class="neo-modal__background"></div>
+    <div class="neo-modal__content" aria-modal="true" role="dialog">
+      <div class="neo-modal__info-close">
+        <button class="neo-close" onclick="$('#webRtcCall').hide();"></button>
+      </div>
+    <div class="neo-modal__header">
+      <h4>WebRTC Audio Call</h4>
+    </div>
+    <div class="neo-modal__body">
+      	<form class="neo-form">
+		<div class="neo-form-control">
+			<div class="neo-input-group">
+				<div class="neo-input-hint" style="margin-top:20px;">Called Number</div>
+				<div class="neo-input-editable__wrapper">
+					<input id="calleeAddress" class="neo-input" placeholder="" aria-label="textInput" role="textbox" value="23912" />
+					<button aria-label="clear input" tabindex='-1' class="neo-input-edit__icon neo-icon-end" onclick="$('#calleeAddress').val('');return false;"></button>
+				</div>
+				<div class="neo-input-hint" style="margin-top:10px;">Display Name</div>
+				<div class="neo-input-editable__wrapper">
+					<input id="displayName" class="neo-input" placeholder="" aria-label="textInput" role="textbox" value="DefaultName" />
+					<button aria-label="clear input" tabindex='-1' class="neo-input-edit__icon neo-icon-end" onclick="$('#displayName').val('');return false;"></button>
+				</div>						
+				<div class="neo-input-hint" style="margin-top:10px;">Calling Number</div>
+				<div class="neo-input-editable__wrapper">
+					<input id="callingNumber" class="neo-input" placeholder="" aria-label="textInput" role="textbox" value="90001" />
+					<button aria-label="clear input" tabindex='-1' class="neo-input-edit__icon neo-icon-end" onclick="$('#callingNumber').val('');return false;"></button>
+				</div>
+				<div class="neo-input-hint"style="margin-top:20px;">User-to-User information (UUI)</div>
+				<div class="neo-input-editable__wrapper">
+					<input id="UUI" class="neo-input" placeholder="" aria-label="textInput" role="textbox" value="0123456789" />
+					<button aria-label="clear input" tabindex='-1' class="neo-input-edit__icon neo-icon-end" onclick="$('#UUI').val('');return false;"></button>
+				</div>			
+			</div>
+		</div>
+		<button id="audioCallBtn" type="button" class="neo-btn neo-btn-primary neo-btn-primary--default neo-center neo-icon-call" style="margin-top:20px;width:100%;height:50px;">発信</button>
+	  </form>
+      </div>
+    </div>
+  </div>
+
+  <!--  WebRTC Settings and Login/Logout -->	  
+  <div id="webRtcSettings" class="nodisp" style="position:absolute;top:100px;left:10px;width:95vw;max-width:580px;">
+    <div class="neo-modal__background"></div>
+    <div class="neo-modal__content" aria-modal="true" role="dialog">
+      <div class="neo-modal__info-close">
+        <button class="neo-close" onclick="$('#webRtcSettings').hide();"></button>
+      </div>
+    <div class="neo-modal__header">
+      <h4>WebRTC Settings</h4>
+    </div>
+    <div class="neo-modal__body">
+      	<form class="neo-form">
+		<div class="neo-form-control">
+			<div class="neo-input-group">
+				<div class="neo-input-hint" style="margin-top:20px;">Call Server Address</div>
+				<div class="neo-input-editable__wrapper">
+					<input id="callServerAddress" class="neo-input" placeholder="" aria-label="textInput" role="textbox" value="wbgw1.aks.avdemo.com" />
+					<button aria-label="clear input" tabindex='-1' class="neo-input-edit__icon neo-icon-end"></button>
+				</div>
+						
+				<div class="neo-input-hint">Call Port</div>
+				<div class="neo-input-editable__wrapper">
+					<input id="callPort" class="neo-input" placeholder="" aria-label="textInput" role="textbox" value="6443" />
+					<button aria-label="clear input" tabindex='-1' class="neo-input-edit__icon neo-icon-end"></button>
+				</div>
+						
+				<div class="neo-input-hint">Token Service Address</div>
+				<div class="neo-input-editable__wrapper">
+					<input id="tokenServiceHost" class="neo-input" placeholder="" aria-label="textInput" role="textbox" value="wbgw1.aks.avdemo.com" />
+					<button aria-label="clear input" tabindex='-1' class="neo-input-edit__icon neo-icon-end"></button>
+				</div>
+						
+				<div class="neo-input-hint">Token Service Port</div>
+				<div class="neo-input-editable__wrapper">
+					<input id="tokenServicePort" class="neo-input" placeholder="" aria-label="textInput" role="textbox" value="9443" />
+					<button aria-label="clear input" tabindex='-1' class="neo-input-edit__icon neo-icon-end"></button>
+				</div>
+						
+				<div class="neo-input-hint" style="margin-top:20px;">Username</div>
+				<div class="neo-input-editable__wrapper">
+					<input id="callUsername" class="neo-input" placeholder="n/a" aria-label="textInput" role="textbox" value="" />
+					<button aria-label="clear input" tabindex='-1' class="neo-input-edit__icon neo-icon-end"></button>
+				</div>
+
+				<div class="neo-input-hint">Password</div>
+				<div class="neo-input-editable__wrapper">
+					<input id="callPassword" class="neo-input" placeholder="n/a" aria-label="textInput" role="textbox" value="" />
+					<button aria-label="clear input" tabindex='-1' class="neo-input-edit__icon neo-icon-end"></button>
+				</div>	
+			</div>
+		</div>
+		<button id="loginBtn" type="button" class="neo-btn neo-btn-primary neo-btn-primary--default neo-center neo-icon-call" style="margin-top:20px;width:100%;height:50px;">Login</button>
+	  </form>
+      </div>
+    </div>
+  </div>	  
+
+  <script src="js/webrtc2/lib/xmlToJSON.min.js"></script>
+  <script src="js/webrtc2/lib/eventSource.min.js"></script>
+  <script src="js/webrtc2/lib/konva.min.js"></script>
+  <script src="js/webrtc2/lib/unorm.min.js"></script>
+  <script src="js/webrtc2/lib/AvayaClientServices-4.8.0.36.min.js"></script>
+  <script src="js/webrtc2/lib/AvayaClientServices.Renderer.min.js"></script>
+  <script src="js/webrtc2/lib/AvayaClientServicesWorker.min.js"></script>
+  <script src="js/webrtc2/callWidget/callController.js"></script>
+  <script src="js/webrtc2/callWidget/callView.js"></script>
+  <script src="js/webrtc2/callsWidget/callsController.js"></script>
+  <script src="js/webrtc2/callsWidget/callsView.js"></script>
+  <script src="js/webrtc2/loginWidget/loginController.js"></script>
+  <script src="js/webrtc2/loginWidget/loginView.js"></script>
+    
+  <!-- CHAT -->
+  <div id="form-chat" class="form-chat" style="width:100%;height:calc(100% - 80px);">	
+  	<div id="chat-talk" class="chat-talk" style="padding:10px;width:100%;height:calc(100% - 80px);overflow:hidden;overflow-y:auto;"></div>
+    <div class="row" style="width:100%;height:80px;padding-top:15px;">
+      	<div style="width:100px;">
+	    	<button id="chat-icons-btn" class="neo-btn-circle neo-btn-circle-tertiary neo-btn-circle-tertiary--info neo-icon-image" style="margin-top:5px;margin-left:30px;"></button>
+		</div>
+		<div style="width:calc(100% - 100px);">
+			<div id="chat-text" class="disp">
+				<div class="row">
+					<input id="typetext" type="text" class="neo-input" style="width:calc(100% - 100px);height:50px;" placeholder="テキスト..." />
+					<div style="width:100px;">
+	    				<button id="chat-send" class="neo-btn-circle neo-btn-circle-tertiary neo-btn-circle-tertiary--info neo-icon-arrow-up" style="margin-top:5px;margin-left:15px;"></button>
+      		   		</div>
+      		   	</div>
+      		 </div>
+      		<div id="chat-icons" class="nodisp" style="width:400px;">
+				<div style="margin:5px;display:inline-block;height:30px;">  
+					<form id="form-fileupload" action="upload" method="post" enctype="multipart/form-data" target="_dummy" onsubmit="return false;">
+						<input id="fileUpload" class="neo-btn neo-btn--compact neo-btn-secondary neo-btn-secondary--primary" type="file" name="filetoupload" accept="image/*,video/*"/>
+					</form>	
+				</div>
+				<canvas id="imagePad" class="nodisp"></canvas>
+      		</div>
+      		<!--
+      		<div id="chat-icons" class="nodisp" style="width:400px;">
+				<div class="row">
+        	 		<div id="chat-menu1" class="chat-menu" style="width:45px;height:45px;float:left;">
+           				<img src="images/ic_smile.png" style="width:100%;height:100%;"/>
+       				</div>
+          			<div id="chat-menu2" class="chat-menu" style="width:45px;height:45px;float:left;">
+            			<img src="images/ic_normal.png" style="width:100%;height:100%;"/>
+          			</div>
+          			<div id="chat-menu3" class="chat-menu" style="width:45px;height:45px;float:left;">
+            			<img src="images/ic_depress.png" style="width:100%;height:100%;"/>
+          			</div>
+      		   	</div>
+      		 </div>
+      		 -->
+      	</div>
+    </div>
+  </div>
+</div>
+<script src="js/session.js" type="text/javascript"></script>
+<script src="js/control.js" type="text/javascript"></script>
+</body>
+</html>
+
